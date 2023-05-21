@@ -1,0 +1,4 @@
+useDynLib("cbird")
+
+export("cbird")
+export("EstScore")
