@@ -2,3 +2,9 @@ useDynLib("cbird")
 
 export("cbird")
 export("EstScore")
+
+importFrom("stats", "cutree")
+importFrom("stats", "dist")
+importFrom("stats", "hclust")
+importFrom("stats", "kmeans")
+importFrom("stats", "rnorm")

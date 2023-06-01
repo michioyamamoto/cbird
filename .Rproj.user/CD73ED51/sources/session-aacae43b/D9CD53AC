@@ -1,0 +1,26 @@
+{
+    "id": "D9CD53AC",
+    "path": "~/RStudio/cbird/cbird/src/OptimCBIRD.c",
+    "project_path": "src/OptimCBIRD.c",
+    "type": "c",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1684693436811.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "121,31",
+        "scrollLine": "99"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1488875372,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1488875372,
+    "read_only": false,
+    "read_only_alternatives": []
+}

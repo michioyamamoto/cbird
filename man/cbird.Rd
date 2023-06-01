@@ -33,13 +33,13 @@ cbird(Y, N.comp, N.clust, lambda=0, N.ite=10000, N.random=1,
 		The number of maximum of iterations for the EM algorithm.
 	}
   \item{N.random}{
-		The number of random sets of parmeters for initial random starts.
+		The number of random sets of parameters for initial random starts.
 	}
   \item{show.random.ite}{
 		If \code{"TRUE"}, the number of each iteration is shown on the R console.
 	}
   \item{eps}{
-		The criteron for the convergence of the alternating least-squares
+		The criterion for the convergence of the alternating least-squares
 		algorithm, which should be specified as a positive real value. If
 		the difference between the values of penalized log likelihood
 		functions of successive iteration is smaller than \code{eps}, then

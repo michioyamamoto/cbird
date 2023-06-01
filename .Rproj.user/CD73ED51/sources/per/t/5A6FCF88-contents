@@ -1,29 +1,22 @@
-//¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú
-//     Sparse Reduced Latent Class Analysis¤ÎALS¤Ë¤è¤ëºÇÅ¬²½
+//????????????????????????????????????????????????????????
+//     Sparse Reduced Latent Class Analysis??ALS?Ë¤?????Å¬??
 //
-//  ¥Õ¥¡¥¤¥ëÌ¾¡§OptimSRLCA.c
-//  ¥Õ¥¡¥¤¥ëÆâÍÆ¡§
-//  ºîÀ®¼Ô¡§YAMAMOTO, Michio
-//  ºîÀ®Æü¡§2013Ç¯4·î12Æü
-//  ºÇ½ª¹¹¿·Æü¡§2023Ç¯06·î01Æü
-//  ¥³¥á¥ó¥È¡§¥Ú¥Ê¥ë¥Æ¥£¹à¤òsubgradient¤òÍøÍÑ¤·¤ÆºÇÅ¬²½
-//           ¸Ä¿Í¤ÎÆÀÅÀ¤ËÄ¾¸òÀ©Ìó¤ÎÍ­Ìµ¤òÁªÂò¤Ç¤­¤ë¤è¤¦¤Ë¤·¤¿¡Ê140303¡Ë
-//           GP¥¢¥ë¥´¥ê¥º¥à¤Ë¤ª¤±¤ën_ite_GP¤Î½é´ü²½Ëº¤ì¤ò½¤Àµ¡Ê150114¡Ë
-//           ¥Ñ¥Ã¥±¡¼¥¸¸ø³«¤Ë´ØÏ¢¤·¤Æ´Ø¿ôÌ¾Åù¤òÊÑ¹¹¤·¤¿¡Ê170206¡Ë
+//  ?Õ¥?????Ì¾??OptimSRLCA.c
+//  ?Õ¥????????Æ¡?
+//  ??À®?Ô¡?YAMAMOTO, Michio
+//  ??À®????2013Ç¯4??12??
+//  ?Ç½?????????2017Ç¯02??06??
+//  ???????È¡??Ú¥Ê¥??Æ¥?????subgradient?????Ñ¤??Æº?Å¬??
+//           ?Ä¿Í¤????À¤?Ä¾??À©????Í­Ìµ??Áª???Ç¤????è¤¦?Ë¤?????140303??
+//           GP???ë¥´?ê¥º???Ë¤?????n_ite_GP?Î½?????Ëº??????Àµ??150114??
+//           ?Ñ¥Ã¥??????????Ë´?Ï¢???Æ´Ø¿?Ì¾?????Ñ¹???????170206??
 //           - SRLCA->CBIRD, EstimateScores->EstScore
-//           BLAS¤ÎÉôÊ¬¤Î½¤Àµ (230601)
-//¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú¡ù¡ú
+//????????????????????????????????????????????????????????
 #include <stdlib.h>
 #include <R.h>
 #include <Rdefines.h>
 #include <R_ext/Parse.h>
 #include <R_ext/Lapack.h>
-#include <R_ext/BLAS.h>
-#include <R_ext/Rdynload.h>
-
-#ifndef FCONE
-# define FCONE
-#endif
 
 void LogDensity(double *Q, double *F, double *A, double *MU, int N_sub, int N_var, int N_comp, int N_clust, double *LogDens);
 void F_Identity(int N, double *I);
@@ -45,10 +38,10 @@ SEXP EstScore_Oblique_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SEXP 
   int    N_var = (int) REAL(INFO)[1];
   int    N_comp = (int) REAL(INFO)[2];
   int    N_ite = (int) REAL(INFO)[3];
-  //  int    N_ite_GP = (int) REAL(INFO)[4];
-  //  int    N_ite_alpha = (int) REAL(INFO)[5];
+  int    N_ite_GP = (int) REAL(INFO)[4];
+  int    N_ite_alpha = (int) REAL(INFO)[5];
 
-  //  double alpha, alpha_ini = 100;
+  double alpha, alpha_ini = 100;
   double blas_one = 1.0;
   double blas_zero = 0.0;
   int    blas_one_int = 1;
@@ -58,20 +51,18 @@ SEXP EstScore_Oblique_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SEXP 
   double *F_old;
   double *F_target;
   double *G;
-  int    i;
-  //  int j;
+  int    i, j;
   double I_comp[N_comp * N_comp];
   int    info;
   int    ipiv[N_comp];
-  double loss_old, loss = 1.0E+100;
-  //  double loss_GP;
+  double loss_old, loss = 1.0E+100, loss_GP;
   double Mat_comp_comp[N_comp * N_comp];
   double *Mat_sv;
   int    n_ite = 0;
-  //  double N_sub_double = (double) N_sub;
-  //  double scalar;
-  //  double sum = 0.0;
-  //  double temp;
+  double N_sub_double = (double) N_sub;
+  double scalar;
+  double sum = 0.0;
+  double temp;
   double vec_1_sub[N_sub];
   double *Z;
 
@@ -94,11 +85,11 @@ SEXP EstScore_Oblique_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SEXP 
   PROTECT(ans = allocVector(VECSXP, 2));
   PROTECT(ans_ind = allocVector(REALSXP, 2));
 
-  // vec.1.sub ¤òµá¤á¤Æ¤ª¤¯
+  // vec.1.sub ???????Æ¤???
   for (i = 0; i < N_sub; i++)
 	vec_1_sub[i] = 1.0;
 
-  F_Identity2(N_comp, I_comp); // Ã±°Ì¹ÔÎó¤òµá¤á¤Æ¤ª¤¯
+  F_Identity2(N_comp, I_comp); // Ã±?Ì¹??????????Æ¤???
 
   /*******************************/
   /*     ALS algorithm start     */
@@ -108,38 +99,38 @@ SEXP EstScore_Oblique_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SEXP 
 
   	loss_old = loss;
 
-  	/***** Theta ¤Î·×»» *****/
+  	/***** Theta ?Î·×»? *****/
 	for (i = 0; i < (N_sub * N_var); i++)
 	  REAL(Theta)[i] = 0.0;
-  	F77_CALL(dger)(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, REAL(Theta), &N_sub); // vec.1.sub %*% t(mu)
-	F77_CALL(dgemm)("N", "T", &N_sub, &N_var, &N_comp, &blas_one, REAL(R_F), &N_sub, REAL(R_A), &N_var, &blas_one, REAL(Theta), &N_sub FCONE FCONE); // Theta <- F %*% t(A) + vec.1.sub %*% t(mu)
+  	dger_(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, REAL(Theta), &N_sub); // vec.1.sub %*% t(mu)
+	dgemm_("N", "T", &N_sub, &N_var, &N_comp, &blas_one, REAL(R_F), &N_sub, REAL(R_A), &N_var, &blas_one, REAL(Theta), &N_sub); // Theta <- F %*% t(A) + vec.1.sub %*% t(mu)
 
 
-  	/***** Z ¤Î·×»» *****/
+  	/***** Z ?Î·×»? *****/
   	for (i = 0; i < (N_sub * N_var); i++)
   	  Z[i] = REAL(Theta)[i] + 4 * REAL(R_Q)[i] * (1 - 1 / (1 + exp(-1.0 * REAL(R_Q)[i] * REAL(Theta)[i])));
 
 
-  	/***** F ¤Î¹¹¿·  *****/
+  	/***** F ?Î¹???  *****/
 	for (i = 0; i < (N_sub * N_var); i++)
 	  Mat_sv[i] = 0.0;
-  	F77_CALL(dger)(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, Mat_sv, &N_sub); // vec.1.sub %*% t(mu)
+  	dger_(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, Mat_sv, &N_sub); // vec.1.sub %*% t(mu)
   	for (i = 0; i < (N_sub * N_var); i++)
   	  REAL(Z_s)[i] = Z[i] - Mat_sv[i];
 
-	F77_CALL(dgemm)("T", "N", &N_comp, &N_comp, &N_var, &blas_one, REAL(R_A), &N_var, REAL(R_A), &N_var, &blas_zero, Mat_comp_comp, &N_comp FCONE FCONE); // t(A) %*% A
-	F77_CALL(dgesv)(&N_comp, &N_comp, Mat_comp_comp, &N_comp, ipiv, I_comp, &N_comp, &info); // solve(t(A) %*% A)
-	F77_CALL(dgemm)("N", "N", &N_sub, &N_comp, &N_var, &blas_one, REAL(Z_s), &N_sub, REAL(R_A), &N_var, &blas_zero, Mat_sv, &N_sub FCONE FCONE); // Z_s %*% A
-	F77_CALL(dgemm)("N", "N", &N_sub, &N_comp, &N_comp, &blas_one, Mat_sv, &N_sub, I_comp, &N_comp, &blas_zero, REAL(R_F), &N_sub FCONE FCONE); // Z_s %*% A %*% solve(t(A) %*% A)
+	dgemm_("T", "N", &N_comp, &N_comp, &N_var, &blas_one, REAL(R_A), &N_var, REAL(R_A), &N_var, &blas_zero, Mat_comp_comp, &N_comp); // t(A) %*% A
+	dgesv_(&N_comp, &N_comp, Mat_comp_comp, &N_comp, ipiv, I_comp, &N_comp, &info); // solve(t(A) %*% A)
+	dgemm_("N", "N", &N_sub, &N_comp, &N_var, &blas_one, REAL(Z_s), &N_sub, REAL(R_A), &N_var, &blas_zero, Mat_sv, &N_sub); // Z_s %*% A
+	dgemm_("N", "N", &N_sub, &N_comp, &N_comp, &blas_one, Mat_sv, &N_sub, I_comp, &N_comp, &blas_zero, REAL(R_F), &N_sub); // Z_s %*% A %*% solve(t(A) %*% A)
 
-  	/* ¼ýÂ«¥Á¥§¥Ã¥¯ÍÑ¤ÎÂ»¼º´Ø¿ô¤Î·×»»  */
+  	/* ??Â«?Á¥??Ã¥??Ñ¤?Â»???Ø¿??Î·×»?  */
   	loss = F_LossSLPCA(REAL(R_F), N_sub, N_comp, REAL(R_A), N_var, N_comp, REAL(R_MU), N_var, Z, N_sub, N_var);
   	diff_loss = fabs(loss_old - loss);
 
   } while (diff_loss > eps && n_ite < N_ite); // End of ALS algorithm
 
 
-  /* ²ò¤Î¼õ¤±ÅÏ¤· */
+  /* ???Î¼????Ï¤? */
   REAL(ans_ind)[0] = (double) n_ite;
   REAL(ans_ind)[1] = loss;
 
@@ -178,24 +169,23 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
   double *F_old;
   double *F_target;
   double *G;
-  int     i;
-  //  int j;
+  int     i, j;
   double  I_comp[N_comp * N_comp];
   int     info;
-  //  int     ipiv[N_comp];
+  int     ipiv[N_comp];
   char    jobu = 'S', jobvt = 'S';
   double  loss_old, loss = 1.0E+100, loss_GP, loss_current_GP;
   int     lwork;
-  //  double  Mat_comp_comp[N_comp * N_comp];
+  double  Mat_comp_comp[N_comp * N_comp];
   double *Mat_sv;
   int     n_ite = 0;
   int     n_ite_alpha;
   int     n_ite_GP = 0;
-  //  double  N_sub_double = (double) N_sub;
+  double  N_sub_double = (double) N_sub;
   double  scalar;
   double  singular_value[N_comp];
-  //  double  sum = 0.0;
-  //  double  temp;
+  double  sum = 0.0;
+  double  temp;
   double *U_svd;
   double *vec_1_sub;
   double *Vt_svd;
@@ -208,7 +198,7 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
   SEXP Theta;
   SEXP ans_ind;
 
-  // malloc ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // malloc ?Ë¤?????????????????
   F_current = (double *) malloc(sizeof(double) * N_sub * N_comp);
   F_old     = (double *) malloc(sizeof(double) * N_sub * N_comp);
   F_target  = (double *) malloc(sizeof(double) * N_sub * N_comp);
@@ -221,19 +211,19 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
   Z         = (double *) malloc(sizeof(double) * N_sub * N_var);
   Z_s       = (double *) malloc(sizeof(double) * N_sub * N_var);
 
-  // PROTECT ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // PROTECT ?Ë¤?????????????????
   PROTECT(Theta = allocVector(REALSXP, N_sub * N_var));
   PROTECT(ans = allocVector(VECSXP, 2));
   PROTECT(ans_ind = allocVector(REALSXP, 2));
 
-  // vec.1.sub ¤òµá¤á¤Æ¤ª¤¯
+  // vec.1.sub ???????Æ¤???
   for (i = 0; i < N_sub; i++)
 	vec_1_sub[i] = 1.0;
 
-  // Ã±°Ì¹ÔÎó¤òµá¤á¤Æ¤ª¤¯
+  // Ã±?Ì¹??????????Æ¤???
   F_Identity2(N_comp, I_comp);
 
-  // dgesvd´Ø¿ôÍÑ¤ÎÊÑ¿ô
+  // dgesvd?Ø¿??Ñ¤??Ñ¿?
   lwork = N_sub * N_sub;
 
   /*******************************/
@@ -244,22 +234,22 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
 
   	loss_old = loss;
 
-  	/***** Theta ¤Î·×»» *****/
+  	/***** Theta ?Î·×»? *****/
 	for (i = 0; i < (N_sub * N_var); i++)
 	  REAL(Theta)[i] = 0.0;
-  	F77_CALL(dger)(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, REAL(Theta), &N_sub); // vec.1.sub %*% t(mu)
-	F77_CALL(dgemm)("N", "T", &N_sub, &N_var, &N_comp, &blas_one, REAL(R_F), &N_sub, REAL(R_A), &N_var, &blas_one, REAL(Theta), &N_sub FCONE FCONE); // Theta <- F %*% t(A) + vec.1.sub %*% t(mu)
+  	dger_(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, REAL(Theta), &N_sub); // vec.1.sub %*% t(mu)
+	dgemm_("N", "T", &N_sub, &N_var, &N_comp, &blas_one, REAL(R_F), &N_sub, REAL(R_A), &N_var, &blas_one, REAL(Theta), &N_sub); // Theta <- F %*% t(A) + vec.1.sub %*% t(mu)
 
 
-  	/***** Z ¤Î·×»» *****/
+  	/***** Z ?Î·×»? *****/
   	for (i = 0; i < (N_sub * N_var); i++)
   	  Z[i] = REAL(Theta)[i] + 4 * REAL(R_Q)[i] * (1 - 1 / (1 + exp(-1.0 * REAL(R_Q)[i] * REAL(Theta)[i])));
 
 
-  	/***** F ¤Î¹¹¿·  *****/
+  	/***** F ?Î¹???  *****/
 	for (i = 0; i < (N_sub * N_var); i++)
 	  Mat_sv[i] = 0.0;
-  	F77_CALL(dger)(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, Mat_sv, &N_sub); // vec.1.sub %*% t(mu)
+  	dger_(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, REAL(R_MU), &blas_one_int, Mat_sv, &N_sub); // vec.1.sub %*% t(mu)
   	for (i = 0; i < (N_sub * N_var); i++)
   	  Z_s[i] = Z[i] - Mat_sv[i];
   	loss_GP = F_LossSLPCA(REAL(R_F), N_sub, N_comp, REAL(R_A), N_var, N_comp, REAL(R_MU), N_var, Z, N_sub, N_var);
@@ -274,8 +264,8 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
   	  //Calculation of Gradient of Loss function at F_ind
   	  F_Grad_ind(REAL(R_F), N_sub, N_comp, REAL(R_A), N_var, N_comp, REAL(R_MU), N_var, Z_s, N_sub, N_var, G);
 
-  	  /* ºÇÅ¬¤Êalpha¤ÎÃµº÷ */
-  	  // ¸½ºß¤ÎÌÜÅª´Ø¿ô¤ÎÃÍ¤ò·×»»¤·¤Æ¤ª¤¯
+  	  /* ??Å¬??alpha??Ãµ?? */
+  	  // ???ß¤???Åª?Ø¿????Í¤??×»????Æ¤???
   	  n_ite_alpha = 0;
   	  alpha = 2 * alpha_ini;
 	  loss_current_GP = F_LossSLPCA(F_current, N_sub, N_comp, REAL(R_A), N_var, N_comp, REAL(R_MU), N_var, Z, N_sub, N_var);
@@ -285,22 +275,22 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
   	  	alpha = alpha / 2;
   	  	scalar = -1 * alpha;
 
-  	  	/* F¤Î¹¹¿· */
+  	  	/* F?Î¹??? */
   	  	for (i = 0; i < (N_sub * N_comp); i++)
   	  	  F_target[i] = F_current[i];
 
-  	  	F77_CALL(dgemm)("N", "N", &N_sub, &N_comp, &N_comp, &scalar, G, &N_sub, I_comp, &N_comp, &blas_one, F_target, &N_sub FCONE FCONE); // F - alpha * G
-  	  	F77_CALL(dgesvd)(&jobu, &jobvt, &N_sub, &N_comp, F_target, &N_sub, singular_value, U_svd, &N_sub, Vt_svd, &N_comp, work, &lwork, &info FCONE FCONE);
+  	  	dgemm_("N", "N", &N_sub, &N_comp, &N_comp, &scalar, G, &N_sub, I_comp, &N_comp, &blas_one, F_target, &N_sub); // F - alpha * G
+  	  	dgesvd_(&jobu, &jobvt, &N_sub, &N_comp, F_target, &N_sub, singular_value, U_svd, &N_sub, Vt_svd, &N_comp, work, &lwork, &info);
   	  	if (info != 0)
   	  	  error(("error code %d from Lapack routine '%s'"), info, "dgesvd");
-  	  	F77_CALL(dgemm)("N", "N", &N_sub, &N_comp, &N_comp, &blas_one, U_svd, &N_sub, Vt_svd, &N_comp, &blas_zero, REAL(R_F), &N_sub FCONE FCONE); // F <- U %*% t(V)
+  	  	dgemm_("N", "N", &N_sub, &N_comp, &N_comp, &blas_one, U_svd, &N_sub, Vt_svd, &N_comp, &blas_zero, REAL(R_F), &N_sub); // F <- U %*% t(V)
 
-  	  	/* ¹¹¿·ÃÍ¤ÎÌÜÅª´Ø¿ô¤ÎÃÍ¤ò·×»»¤·¤Æ¤ª¤¯ */
+  	  	/* ?????Í¤???Åª?Ø¿????Í¤??×»????Æ¤??? */
 		loss_GP = F_LossSLPCA(REAL(R_F), N_sub, N_comp, REAL(R_A), N_var, N_comp, REAL(R_MU), N_var, Z, N_sub, N_var);
 
-  	  } while (loss_GP > loss_current_GP && n_ite_alpha < N_ite_alpha); // alpha ¤ÎÃµº÷½ªÎ»
+  	  } while (loss_GP > loss_current_GP && n_ite_alpha < N_ite_alpha); // alpha ??Ãµ????Î»
 
-  	  //alpha = 0¤Î¾ì¹ç¡¤¸µ¤Î F ¤òÂåÆþ¤·¤Æ¤ª¤¯
+  	  //alpha = 0?Î¾??ç¡¤???? F ?????????Æ¤???
   	  if (n_ite_alpha == N_ite_alpha) {
   	  	alpha = 0;
   	  	for (i = 0; i < (N_sub * N_comp); i++)
@@ -308,19 +298,19 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
   	  	loss_GP = loss_current_GP;
   	  }
 
-  	  /* ¼ýÂ«È½Äê */
+  	  /* ??Â«È½?? */
   	  diff_loss_GP = loss_current_GP - loss_GP;
 
   	} while (diff_loss_GP > eps && n_ite_GP < N_ite_GP); // End of GP algorithm
 
-  	/* ¼ýÂ«¥Á¥§¥Ã¥¯ÍÑ¤ÎÂ»¼º´Ø¿ô¤Î·×»»  */
+  	/* ??Â«?Á¥??Ã¥??Ñ¤?Â»???Ø¿??Î·×»?  */
   	loss = F_LossSLPCA(REAL(R_F), N_sub, N_comp, REAL(R_A), N_var, N_comp, REAL(R_MU), N_var, Z, N_sub, N_var);
   	diff_loss = fabs(loss_old - loss);
 
   } while (diff_loss > eps && n_ite < N_ite); // End of ALS algorithm
 
 
-  /* ²ò¤Î¼õ¤±ÅÏ¤· */
+  /* ???Î¼????Ï¤? */
   REAL(ans_ind)[0] = (double) n_ite;
   REAL(ans_ind)[1] = loss;
 
@@ -346,7 +336,7 @@ SEXP EstScore_Orthogonal_C(SEXP R_X, SEXP R_F, SEXP R_A, SEXP R_MU, SEXP R_Q, SE
 
 SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP INFO, SEXP LAMBDA, SEXP PLL_RECORD)
 {
-  // R¤«¤é¤Î°úÅÏ¤·
+  // R?????Î°??Ï¤?
   int     N_sub = (int) REAL(INFO)[0];
   int     N_var = (int) REAL(INFO)[1];
   int     N_comp = (int) REAL(INFO)[2];
@@ -357,20 +347,19 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   double  eps = (double) REAL(INFO)[7];
   double  lambda = (double) REAL(LAMBDA)[0];
 
-  //ÊÑ¿ôÄêµÁ
+  //?Ñ¿?????
   double *A_target;
   double *A_target_inv;
   double *A_target_var;
   double  alpha, alpha_ini = 100;
-  double  blas_one = 1.0, blas_zero = 0.0;
-  //  double  blas_minus_one = 1.0;
+  double  blas_one = 1.0, blas_zero = 0.0, blas_minus_one = 1.0;
   int     blas_one_int = 1;
   double  C;
   //  double *D_mat;
   double  diff_loss;
   double  diff_loss_GP;
-  //  double *eigen_value;
-  //  double *eigen_value2; //¾º½ç¤«¤é¹ß½ç¤Ø¤ÎÊÂ¤ÓÂØ¤¨ÍÑ
+  double *eigen_value;
+  double *eigen_value2; //???ç¤«???ß½??Ø¤??Â¤??Ø¤???
   double *F_current;
   double *F_s;
   double *F_target;
@@ -379,8 +368,8 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   int     i, j, k, l, l2;
   double *I_comp;
   int     info;
-  char    jobu = 'S', jobvt = 'S'; // for F77_CALL(dgesvd)
-  //  char    jobz = 'V', uplo = 'U'; // for dsyev_
+  char    jobu = 'S', jobvt = 'S'; // for dgesvd_
+  char    jobz = 'V', uplo = 'U'; // for dsyev_
   double  loss = 1.0E+100, loss_old;
   double  loss_GP, loss_current_GP;
   double *LogDens;
@@ -392,7 +381,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   int     n_ite = 0;
   int     n_ite_alpha;
   int     n_ite_GP = 0;
-  //  int     N_clust_clust = N_clust * N_clust;
+  int     N_clust_clust = N_clust * N_clust;
   int     N_clust_comp = N_clust * N_comp;
   int     N_clust_var = N_clust * N_var;
   int     N_comp_comp = N_comp * N_comp;
@@ -407,13 +396,13 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   double  sign_C;
   double  singular_value[N_comp];
   double  sum;
-  //  double  temp;
+  double  temp;
   double  temp_double;
   double *Theta;
   double *U_old;
   double *U_svd;
   double *vec_1_clust;
-  //  double  vec_comp[N_comp];
+  double  vec_comp[N_comp];
   double *Vt_svd;
   double *W;
   double *work;
@@ -432,13 +421,13 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   SEXP    ans_record;
 
 
-  // malloc ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // malloc ?Ë¤?????????????????
   A_target    = (double *) malloc(sizeof(double) * N_comp_comp);
   A_target_inv= (double *) malloc(sizeof(double) * N_comp_comp);
   A_target_var= (double *) malloc(sizeof(double) * N_comp_comp);
   //  D_mat       = (double *) malloc(sizeof(double) * N_var_comp);
-  //  eigen_value = (double *) malloc(sizeof(double) * N_comp);
-  ///  eigen_value2= (double *) malloc(sizeof(double) * N_comp);
+  eigen_value = (double *) malloc(sizeof(double) * N_comp);
+  eigen_value2= (double *) malloc(sizeof(double) * N_comp);
   F_current   = (double *) malloc(sizeof(double) * N_sub_var);
   F_target    = (double *) malloc(sizeof(double) * N_sub_var);
   F_s         = (double *) malloc(sizeof(double) * N_var_comp);
@@ -460,7 +449,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   Z_s         = (double *) malloc(sizeof(double) * N_sub_var);
 
 
-  // PROTECT ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // PROTECT ?Ë¤?????????????????
   //  PROTECT(test_ret = allocVector(REALSXP, N_var_comp));
   PROTECT(ans = allocVector(VECSXP, 7));
   PROTECT(ans_F = allocMatrix(REALSXP, N_clust, N_comp));
@@ -472,17 +461,17 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   PROTECT(ans_record = allocVector(REALSXP, N_ite));
 
 
-  // test¤Ç¤ÎºÇ½ªÅª¤Ê²ò¤òÊÖ¤¹ÊÑ¿ô
+  // test?Ç¤ÎºÇ½?Åª?Ê²????Ö¤??Ñ¿?
   //  rans = REAL(test_ret);
 
-  // vec.1.clust ¤òµá¤á¤Æ¤ª¤¯
+  // vec.1.clust ???????Æ¤???
   for (i = 0; i < N_clust; i++)
 	vec_1_clust[i] = 1.0;
 
-  // Ã±°Ì¹ÔÎó¤òµá¤á¤Æ¤ª¤¯
+  // Ã±?Ì¹??????????Æ¤???
   F_Identity(N_comp, I_comp);
 
-  // dgesvd´Ø¿ôÍÑ¤ÎÊÑ¿ô
+  // dgesvd?Ø¿??Ñ¤??Ñ¿?
   lwork = N_sub_sub;
 
   /*******************************/
@@ -496,7 +485,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	  U_old[i] = REAL(U)[i];
 
 
-  	/***** D_mat ¤Î·×»» *****/
+  	/***** D_mat ?Î·×»? *****/
   	/* for (i = 0; i < (N_var_comp); i++) { */
   	/*   temp = lambda / (2 * fabs(REAL(A)[i])); */
   	/*   if (temp > DBL_MAX) { */
@@ -511,12 +500,12 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	//
 	//          E step
 	//
-	//  U ¤Ë¤Ä¤¤¤Æ¾ò·ïÉÕ¤­´üÂÔÃÍ¤ò¤È¤ë
+	//  U ?Ë¤Ä¤??Æ¾????Õ¤??????Í¤??È¤?
 	//---------------------------------
-	// Y.n ¤Î k ¤òÍ¿¤¨¤¿¤â¤È¤Ç¤Î¾ò·ïÉÕ¤­Ì©ÅÙ¤òµá¤á¤ë
+	// Y.n ?? k ??Í¿???????È¤Ç¤Î¾????Õ¤?Ì©?Ù¤???????
 	LogDensity(REAL(Q), REAL(F), REAL(A), REAL(MU), N_sub, N_var, N_comp, N_clust, LogDens);
 
-	// U ¤Ë¤Ä¤¤¤Æ¤Î¾ò·ïÉÕ¤­´üÂÔÃÍ¤ò·×»»
+	// U ?Ë¤Ä¤??Æ¤Î¾????Õ¤??????Í¤??×»?
 	max_density = LogDens[0];
 	for (i = 1; i < N_sub_clust; i++)
 	  if (max_density < LogDens[i])
@@ -537,7 +526,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	  N_k[k] = sum;
 	}
 
-	// ¶õ¤Î¥¯¥é¥¹¥¿¡¼¤¬À¸¤¸¤¿¾ì¹ç¤Ï½ªÎ»¤¹¤ë
+	// ???Î¥??é¥¹??????À¸?????????Ï½?Î»????
 	flag = 0;
 	for (k = 0; k < N_clust; k++)
 	  if (N_k[k] < 1.0E-200)
@@ -559,21 +548,21 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	REAL(g)[N_clust - 1] = 1 - sum;
 
 
-	/***** Theta ¤Î·×»» *****/
+	/***** Theta ?Î·×»? *****/
 	for (i = 0; i < N_clust_var; i++)
 	  Theta[i] = 0.0;
-  	F77_CALL(dger)(&N_clust, &N_var, &blas_one, vec_1_clust, &blas_one_int, REAL(MU), &blas_one_int, Theta, &N_clust); // vec.1.clust %*% t(mu)
-	F77_CALL(dgemm)("N", "T", &N_clust, &N_var, &N_comp, &blas_one, REAL(F), &N_clust, REAL(A), &N_var, &blas_one, Theta, &N_clust FCONE FCONE); // Theta <- F %*% t(A) + vec.1.clust %*% t(mu)
+  	dger_(&N_clust, &N_var, &blas_one, vec_1_clust, &blas_one_int, REAL(MU), &blas_one_int, Theta, &N_clust); // vec.1.clust %*% t(mu)
+	dgemm_("N", "T", &N_clust, &N_var, &N_comp, &blas_one, REAL(F), &N_clust, REAL(A), &N_var, &blas_one, Theta, &N_clust); // Theta <- F %*% t(A) + vec.1.clust %*% t(mu)
 
 
-  	/***** X ¤Î·×»» *****/
+  	/***** X ?Î·×»? *****/
 	for (i = 0; i < N_sub; i++)
 	  for (k = 0; k < N_clust; k++)
 		  for (j = 0; j < N_var; j++)
 		  X[i + N_sub * k + N_sub * N_clust * j] = Theta[k + N_clust * j] + 4 * REAL(Q)[i + N_sub * j] * (1 - 1 / (1 + exp(-REAL(Q)[i + N_sub * j] * Theta[k + N_clust * j])));
 
 
-  	/***** mu ¤Î¹¹¿·  *****/
+  	/***** mu ?Î¹???  *****/
 	for (k = 0; k < N_clust; k++) {
 	  for (j = 0; j < N_var; j++) {
 		sum = 0.0;
@@ -582,7 +571,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 		X_par[k + N_clust * j] = sum / N_k[k];
 	  }
 	}
-	F77_CALL(dgemm)("N", "T", &N_clust, &N_var, &N_comp, &blas_one, REAL(F), &N_clust, REAL(A), &N_var, &blas_zero, Mat_cv, &N_clust FCONE FCONE); // F %*% t(A)
+	dgemm_("N", "T", &N_clust, &N_var, &N_comp, &blas_one, REAL(F), &N_clust, REAL(A), &N_var, &blas_zero, Mat_cv, &N_clust); // F %*% t(A)
   	for (j = 0; j < N_var; j++) {
   	  sum = 0.0;
   	  for (k = 0; k < N_clust; k++)
@@ -590,10 +579,10 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   	  REAL(MU)[j] = sum / N_sub_double;
   	}
 
-  	/***** F ¤Î¹¹¿·  *****/
+  	/***** F ?Î¹???  *****/
 	for (i = 0; i < N_clust_var; i++)
 	  Mat_cv[i] = 0.0;
-  	F77_CALL(dger)(&N_clust, &N_var, &blas_one, vec_1_clust, &blas_one_int, REAL(MU), &blas_one_int, Mat_cv, &N_clust); // vec.1.clust %*% t(mu)
+  	dger_(&N_clust, &N_var, &blas_one, vec_1_clust, &blas_one_int, REAL(MU), &blas_one_int, Mat_cv, &N_clust); // vec.1.clust %*% t(mu)
 	for (k = 0; k < N_clust; k++) {
 	  for (j = 0; j < N_var; j++) {
 		sum = 0.0;
@@ -616,8 +605,8 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   	  //Calculation of Gradient of Loss function at F
   	  F_Grad(REAL(F), REAL(A), REAL(MU), X_par, G, N_sub, N_var, N_comp, N_clust, N_k);
 
-  	  // ºÇÅ¬¤Êalpha¤ÎÃµº÷
-  	  // ¸½ºß¤ÎÌÜÅª´Ø¿ô¤ÎÃÍ¤ò·×»»¤·¤Æ¤ª¤¯
+  	  // ??Å¬??alpha??Ãµ??
+  	  // ???ß¤???Åª?Ø¿????Í¤??×»????Æ¤???
   	  n_ite_alpha = 0;
   	  alpha = 2 * alpha_ini;
 	  // loss_current_GP = F_LossCBIRD(F_current, REAL(A), REAL(U), REAL(MU), X, D_mat, N_sub, N_var, N_comp, N_clust);
@@ -631,19 +620,19 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   	  	for (i = 0; i < N_clust_comp; i++)
   	  	  F_target[i] = F_current[i];
 
-		F77_CALL(dgemm)("N", "N", &N_clust, &N_comp, &N_comp, &scalar, G, &N_clust, I_comp, &N_comp, &blas_one, F_target, &N_clust FCONE FCONE); // F - alpha * G
-		F77_CALL(dgesvd)(&jobu, &jobvt, &N_clust, &N_comp, F_target, &N_clust, singular_value, U_svd, &N_clust, Vt_svd, &N_comp, work, &lwork, &info FCONE FCONE);
+		dgemm_("N", "N", &N_clust, &N_comp, &N_comp, &scalar, G, &N_clust, I_comp, &N_comp, &blas_one, F_target, &N_clust); // F - alpha * G
+		dgesvd_(&jobu, &jobvt, &N_clust, &N_comp, F_target, &N_clust, singular_value, U_svd, &N_clust, Vt_svd, &N_comp, work, &lwork, &info);
   	  	if (info != 0)
   	  	  error(("error code %d from Lapack routine '%s'"), info, "dgesvd");
-  	  	F77_CALL(dgemm)("N", "N", &N_clust, &N_comp, &N_comp, &blas_one, U_svd, &N_clust, Vt_svd, &N_comp, &blas_zero, REAL(F), &N_clust FCONE FCONE); // F <- U %*% t(V)
+  	  	dgemm_("N", "N", &N_clust, &N_comp, &N_comp, &blas_one, U_svd, &N_clust, Vt_svd, &N_comp, &blas_zero, REAL(F), &N_clust); // F <- U %*% t(V)
 
-  	  	/* ¹¹¿·ÃÍ¤ÎÌÜÅª´Ø¿ô¤ÎÃÍ¤ò·×»»¤·¤Æ¤ª¤¯ */
+  	  	/* ?????Í¤???Åª?Ø¿????Í¤??×»????Æ¤??? */
 		//		loss_GP = F_LossCBIRD(REAL(F), REAL(A), REAL(U), REAL(MU), X, D_mat, N_sub, N_var, N_comp, N_clust);
 		loss_GP = F_LossCBIRD(REAL(F), REAL(A), REAL(U), REAL(MU), X, lambda, N_sub, N_var, N_comp, N_clust);
 
-  	  } while (loss_GP > loss_current_GP && n_ite_alpha < N_ite_alpha); // alpha ¤ÎÃµº÷½ªÎ»
+  	  } while (loss_GP > loss_current_GP && n_ite_alpha < N_ite_alpha); // alpha ??Ãµ????Î»
 
-  	  //alpha = 0¤Î¾ì¹ç¡¤¸µ¤Î F ¤òÂåÆþ¤·¤Æ¤ª¤¯
+  	  //alpha = 0?Î¾??ç¡¤???? F ?????????Æ¤???
   	  if (n_ite_alpha == N_ite_alpha) {
   	  	alpha = 0;
   	  	for (i = 0; i < (N_clust_comp); i++)
@@ -651,15 +640,15 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   	  	loss_GP = loss_current_GP;
   	  }
 
-  	  /* ¼ýÂ«È½Äê */
+  	  /* ??Â«È½?? */
   	  diff_loss_GP = loss_current_GP - loss_GP;
 
   	} while (diff_loss_GP > eps && n_ite_GP < N_ite_GP); // End of GP algorithm
 
 
 
-  	/***** A ¤Î¹¹¿·  *****/
-	// W = sum_k N_k f_k f_k' ¤ò·×»»¤·¤Æ¤ª¤¯
+  	/***** A ?Î¹???  *****/
+	// W = sum_k N_k f_k f_k' ???×»????Æ¤???
 	for (i = 0; i < N_comp; i++) {
 	  for (j = 0; j < N_comp; j++) {
 		sum = 0.0;
@@ -669,7 +658,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	  }
 	}
 
-	// F.s ¤ò·×»»¤·¤Æ¤ª¤¯
+	// F.s ???×»????Æ¤???
 	for (j = 0; j < N_var; j++) {
 	  for (l = 0; l < N_comp; l++) {
 		sum = 0.0;
@@ -682,7 +671,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	  }
 	}
 
-	// ÊÑ¿ô¤´¤È¤Ë¿äÄêÃÍ¤òµá¤á¤ë
+	// ?Ñ¿ô¤´¤È¤Ë¿????Í¤???????
 	scalar = 4 * N_sub_double * lambda;
 
 	for (j = 0; j < N_var; j++) {
@@ -699,7 +688,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 	}
 
 
-  	/* ¼ýÂ«¥Á¥§¥Ã¥¯ÍÑ¤ÎÈ³Â§ÉÕ¤­ÂÐ¿ôÌàÅÙ¤Î·×»»  */
+  	/* ??Â«?Á¥??Ã¥??Ñ¤?È³Â§?Õ¤??Ð¿????Ù¤Î·×»?  */
 	loss = PenLogLikelihood(REAL(Q), REAL(F), REAL(A), REAL(MU), REAL(g), N_sub, N_var, N_comp, N_clust, lambda);
 
 	REAL(PLL_RECORD)[n_ite - 1] = loss;
@@ -711,7 +700,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   /* for (i = 0; i < N_var_comp; i++) */
   /* 	rans[i] = REAL(A)[i]; */
 
-  /* ²ò¤Î¼õ¤±ÅÏ¤· */
+  /* ???Î¼????Ï¤? */
   /* j = j + N_var; */
   /* REAL(test_ret)[j] = (double) n_ite; */
   for (i = 0; i < N_clust_comp; i++)
@@ -738,7 +727,7 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
   SET_VECTOR_ELT(ans, 6, ans_record);
 
 
-  // ¥á¥â¥ê³«Êü
+  // ?????ê³«??
   UNPROTECT(8);
 
   free(A_target);
@@ -765,40 +754,39 @@ SEXP OptimCBIRD_C(SEXP Y, SEXP F, SEXP A, SEXP g, SEXP U, SEXP MU, SEXP Q, SEXP 
 }
 
 
-/* È³Â§ÉÕ¤­ÂÐ¿ôÌàÅÙ¤òµá¤á¤ë */
+/* È³Â§?Õ¤??Ð¿????Ù¤??????? */
 double PenLogLikelihood(double *Q, double *F, double *A, double *mu, double *g, int N_sub, int N_var, int N_comp, int N_clust, double lambda)
 {
-  // ´ðËÜÅª¤ÊÊÑ¿ô¤ÎÄêµÁ
-  //double  blas_one = 1, blas_zero = 0, blas_minus_one = -1;
-  //int     blas_one_int = 1;
-  int     i, k;
-  //  int j;
+  // ????Åª???Ñ¿???????
+  double  blas_one = 1, blas_zero = 0, blas_minus_one = -1;
+  int     blas_one_int = 1;
+  int     i, j, k;
   double *LogDens;
-  //  double  lossfunc;
+  double  lossfunc;
   double  mean_density;
-  //  int     N_clust_var = N_clust * N_var;
+  int     N_clust_var = N_clust * N_var;
   double  N_sub_double = (double) N_sub;
   double  N_sub_clust = N_sub * N_clust;
   double  N_sub_clust_double = (double) N_sub_clust;
-  //  double  prod;
+  double  prod;
   double  penll;
   double  sum;
   double  term1, term2;
 
-  // malloc ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // malloc ?Ë¤?????????????????
   LogDens     = (double *) malloc(sizeof(double) * N_sub_clust);
 
-  //¾ò·ïÉÕ¤­Ì©ÅÙ¤Î·×»»
+  //?????Õ¤?Ì©?Ù¤Î·×»?
   LogDensity(Q, F, A, mu, N_sub, N_var, N_comp, N_clust, LogDens);
 
-  //Theta¤ÎÊ¿¶ÑÃÍ¤òµá¤á¤ë
+  //Theta??Ê¿???Í¤???????
   mean_density = 0;
   for (i = 1; i < N_sub_clust; i++)
   	mean_density = mean_density + LogDens[i];
   mean_density = mean_density / N_sub_clust_double;
 
 
-  /***** Âè1¹à¤Î·×»» *****/
+  /***** ??1???Î·×»? *****/
   term1 = 0.0;
   for (i = 0; i < N_sub; i++) {
 	sum = 0.0;
@@ -808,13 +796,13 @@ double PenLogLikelihood(double *Q, double *F, double *A, double *mu, double *g, 
 	term1 = term1 + log(sum) + mean_density;
   }
 
-  /***** Âè2¹à¤Î·×»» *****/
+  /***** ??2???Î·×»? *****/
   sum = 0;
   for (i = 0; i < (N_var * N_comp); i++)
 	sum = sum + fabs(A[i]);
   term2 = sum * N_sub_double * lambda;
 
-  /***** È³Â§ÉÕ¤­ÂÐ¿ôÌàÅÙ¤Î·×»» *****/
+  /***** È³Â§?Õ¤??Ð¿????Ù¤Î·×»? *****/
   penll = term1 - term2;
 
   free(LogDens);
@@ -823,10 +811,10 @@ double PenLogLikelihood(double *Q, double *F, double *A, double *mu, double *g, 
 }
 
 
-/* k ¤¬Í¿¤¨¤é¤ì¤¿¤â¤È¤Ç¤Î Yn ¤Î¾ò·ïÉÕ¤­Ì©ÅÙ */
+/* k ??Í¿?????ì¤¿???È¤Ç¤? Yn ?Î¾????Õ¤?Ì©?? */
 void LogDensity(double *Q, double *F, double *A, double *MU, int N_sub, int N_var, int N_comp, int N_clust, double *LogDens)
 {
-  // ´ðËÜÅª¤ÊÊÑ¿ô¤ÎÄêµÁ
+  // ????Åª???Ñ¿???????
   double  const_temp;
   double  density;
   int     i, j, k, l;
@@ -850,10 +838,10 @@ void LogDensity(double *Q, double *F, double *A, double *MU, int N_sub, int N_va
 		  temp = temp + F[k + l * N_clust] * A[j + l * N_var];
 
 		const_temp = 1 + exp(-Q[i + j * N_sub] * (MU[j] + temp));
-		if (const_temp > 1.0E+20) { //¤â¤Î¤¹¤´¤¯Âç¤­¤¤¾ì¹ç
+		if (const_temp > 1.0E+20) { //???Î¤??????ç¤­??????
 		  theta_mat[k + N_clust * j] = 1.0E-20;
 		  //		  theta_mat[k + N_clust * j] = 1.0 - 1.0E-20;
-		} else if (fabs(1.0 - const_temp) < 1.0E-20) { //¤â¤Î¤¹¤´¤¯¾®¤µ¤¤¾ì¹ç
+		} else if (fabs(1.0 - const_temp) < 1.0E-20) { //???Î¤???????????????
 		  theta_mat[k + N_clust * j] = 1.0 - 1.0E-20;
 		} else {
 		  theta_mat[k + N_clust * j] = 1 / const_temp;
@@ -867,12 +855,11 @@ void LogDensity(double *Q, double *F, double *A, double *MU, int N_sub, int N_va
 }
 
 
-/* Loss Function ¤ò·×»»¤¹¤ë */
+/* Loss Function ???×»????? */
 double F_LossCBIRD(double *F, double *A, double *U, double *mu, double *X, double lambda, int N_sub, int N_var, int N_comp, int N_clust)
 {
-  // ´ðËÜÅª¤ÊÊÑ¿ô¤ÎÄêµÁ
-  double  blas_one = 1;
-  //  double blas_zero = 0, blas_minus_one = -1;
+  // ????Åª???Ñ¿???????
+  double  blas_one = 1, blas_zero = 0, blas_minus_one = -1;
   int     blas_one_int = 1;
   int     i, j, k;
   double  lossfunc;
@@ -883,19 +870,19 @@ double F_LossCBIRD(double *F, double *A, double *U, double *mu, double *X, doubl
   double *Theta;
   double  vec_1_clust[N_clust];
 
-  // malloc ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // malloc ?Ë¤?????????????????
   Theta       = (double *) malloc(sizeof(double) * N_clust_var);
 
   for (i = 0; i < N_clust; i++)
 	vec_1_clust[i] = 1.0;
 
-  /***** Theta ¤Î·×»» *****/
+  /***** Theta ?Î·×»? *****/
   for (i = 0; i < N_clust_var; i++)
 	Theta[i] = 0.0;
-  F77_CALL(dger)(&N_clust, &N_var, &blas_one, vec_1_clust, &blas_one_int, mu, &blas_one_int, Theta, &N_clust); // vec.1.clust %*% t(mu)
-  F77_CALL(dgemm)("N", "T", &N_clust, &N_var, &N_comp, &blas_one, F, &N_clust, A, &N_var, &blas_one, Theta, &N_clust FCONE FCONE); // Theta <- F %*% t(A) + vec.1.clust %*% t(mu)
+  dger_(&N_clust, &N_var, &blas_one, vec_1_clust, &blas_one_int, mu, &blas_one_int, Theta, &N_clust); // vec.1.clust %*% t(mu)
+  dgemm_("N", "T", &N_clust, &N_var, &N_comp, &blas_one, F, &N_clust, A, &N_var, &blas_one, Theta, &N_clust); // Theta <- F %*% t(A) + vec.1.clust %*% t(mu)
 
-  /***** Âè1¹à *****/
+  /***** ??1?? *****/
   term1 = 0.0;
   for (i = 0; i < N_sub; i++) {
 	for (k = 0; k < N_clust; k++) {
@@ -907,7 +894,7 @@ double F_LossCBIRD(double *F, double *A, double *U, double *mu, double *X, doubl
   }
   term1 = term1 / 8;
 
-  /***** Âè2¹à *****/
+  /***** ??2?? *****/
   sum = 0.0;
   for (i = 0; i < (N_var * N_comp); i++)
 	sum = sum + fabs(A[i]);
@@ -916,22 +903,22 @@ double F_LossCBIRD(double *F, double *A, double *U, double *mu, double *X, doubl
   /***** Loss function *****/
   lossfunc = term1 + term2;
 
-  // ¥á¥â¥ê³«Êü
+  // ?????ê³«??
   free(Theta);
 
   return(lossfunc);
 }
 
 
-/* Loss function ¤Î F_ind ¤Ë¤ª¤±¤ë Gradient ¤ò·×»»¤¹¤ë */
+/* Loss function ?? F_ind ?Ë¤????? Gradient ???×»????? */
 void F_Grad_ind(double *F, int row1, int col1, double *A, int row2, int col2, double *mu, int length1, double *X_s, int row3, int col3, double *G)
 {
-  // ´ðËÜÅª¤ÊÊÑ¿ô¤ÎÄêµÁ
+  // ????Åª???Ñ¿???????
   int N_sub = row1, N_var = row2, N_comp = col1;
 
-  // ÊÑ¿ô¤ÎÄêµÁ
+  // ?Ñ¿???????
   double  blas_one = 1, blas_zero = 0, blas_minus_one = -1, blas_quarter = 0.25;
-  //  int     i, j;
+  int     i, j;
   double *I_comp;
   double *Mat_sc;
   double *Mat_sv;
@@ -939,56 +926,55 @@ void F_Grad_ind(double *F, int row1, int col1, double *A, int row2, int col2, do
   int     N_sub_var = N_sub * N_var;
   int     N_sub_comp = N_sub * N_comp;
 
-  // malloc ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // malloc ?Ë¤?????????????????
   I_comp = (double *) malloc(sizeof(double) * N_comp_comp);
   Mat_sc = (double *) malloc(sizeof(double) * N_sub_comp);
   Mat_sv = (double *) malloc(sizeof(double) * N_sub_var);
 
-  /* Ã±°Ì¹ÔÎóI_var¤òµá¤á¤Æ¤ª¤¯ */
+  /* Ã±?Ì¹???I_var???????Æ¤??? */
   F_Identity(N_comp, I_comp);
 
-  /* Gradient ¤Î·×»» */
-  F77_CALL(dgemm)("N", "T", &N_sub,  &N_var, &N_comp,     &blas_one,      F, &N_sub,      A,  &N_var,      &blas_zero, Mat_sv, &N_sub FCONE FCONE); // F %*% t(A)
-  F77_CALL(dgemm)("N", "N", &N_sub, &N_comp,  &N_var, &blas_quarter, Mat_sv, &N_sub,      A,  &N_var,      &blas_zero, Mat_sc, &N_sub FCONE FCONE); // 1/4 * F %*% t(A) %*% A
-  F77_CALL(dgemm)("N", "N", &N_sub, &N_comp,  &N_var, &blas_quarter,    X_s, &N_sub,      A,  &N_var,      &blas_zero,      G, &N_sub FCONE FCONE); // 1/4 * Z.s %*% A
-  F77_CALL(dgemm)("N", "N", &N_sub, &N_comp, &N_comp,     &blas_one, Mat_sc, &N_sub, I_comp, &N_comp, &blas_minus_one,      G, &N_sub FCONE FCONE); // G <- 1/4 * F %*% t(A) %*% A - 1/4 * Z.s %*% A
+  /* Gradient ?Î·×»? */
+  dgemm_("N", "T", &N_sub,  &N_var, &N_comp,     &blas_one,      F, &N_sub,      A,  &N_var,      &blas_zero, Mat_sv, &N_sub); // F %*% t(A)
+  dgemm_("N", "N", &N_sub, &N_comp,  &N_var, &blas_quarter, Mat_sv, &N_sub,      A,  &N_var,      &blas_zero, Mat_sc, &N_sub); // 1/4 * F %*% t(A) %*% A
+  dgemm_("N", "N", &N_sub, &N_comp,  &N_var, &blas_quarter,    X_s, &N_sub,      A,  &N_var,      &blas_zero,      G, &N_sub); // 1/4 * Z.s %*% A
+  dgemm_("N", "N", &N_sub, &N_comp, &N_comp,     &blas_one, Mat_sc, &N_sub, I_comp, &N_comp, &blas_minus_one,      G, &N_sub); // G <- 1/4 * F %*% t(A) %*% A - 1/4 * Z.s %*% A
 
-  // ¥á¥â¥ê¤Î³«Êü
+  // ???????Î³???
   free(I_comp);
   free(Mat_sc);
   free(Mat_sv);
 }
 
 
-/* Loss function ¤Î F ¤Ë¤ª¤±¤ë Gradient ¤ò·×»»¤¹¤ë */
+/* Loss function ?? F ?Ë¤????? Gradient ???×»????? */
 void F_Grad(double *F, double *A, double *mu, double *X_s, double *G, int N_sub, int N_var, int N_comp, int N_clust, double *N_k)
 {
-  // ÊÑ¿ô¤ÎÄêµÁ
-  double  blas_one = 1.0, blas_zero = 0.0;
-  //  double blas_minus_one = 1.0;
+  // ?Ñ¿???????
+  double  blas_one = 1.0, blas_zero = 0.0, blas_minus_one = 1.0;
   int     i, k, l;
   double *Mat_cv;
-  //  int     N_clust_comp = N_clust * N_comp;
+  int     N_clust_comp = N_clust * N_comp;
   int     N_clust_var = N_clust * N_var;
 
-  // malloc ¤Ë¤è¤ë¥á¥â¥ê³ä¤êÅö¤Æ
+  // malloc ?Ë¤?????????????????
   Mat_cv = (double *) malloc(sizeof(double) * N_clust_var);
 
 
-  F77_CALL(dgemm)("N", "T", &N_clust, &N_var, &N_comp, &blas_one, F, &N_clust, A, &N_var, &blas_zero, Mat_cv, &N_clust FCONE FCONE); // F %*% t(A)
+  dgemm_("N", "T", &N_clust, &N_var, &N_comp, &blas_one, F, &N_clust, A, &N_var, &blas_zero, Mat_cv, &N_clust); // F %*% t(A)
   for (i = 0; i < N_clust_var; i++)
 	Mat_cv[i] = Mat_cv[i] - X_s[i]; // F %*% t(A) - X.F
-  F77_CALL(dgemm)("N", "N", &N_clust, &N_comp, &N_var, &blas_one, Mat_cv, &N_clust, A, &N_var, &blas_zero, G, &N_clust FCONE FCONE); // (F %*% t(A) - X.f) %*% A
+  dgemm_("N", "N", &N_clust, &N_comp, &N_var, &blas_one, Mat_cv, &N_clust, A, &N_var, &blas_zero, G, &N_clust); // (F %*% t(A) - X.f) %*% A
   for (k = 0; k < N_clust; k++)
 	for (l = 0; l < N_comp; l++)
 	  G[k + N_clust * l] = N_k[k] / 4.0 * G[k + N_clust * l];
 
-  // ¥á¥â¥ê¤Î³«Êü
+  // ???????Î³???
   free(Mat_cv);
 }
 
 
-/* Ã±°Ì¹ÔÎó I_N ¤ò·×»»¤¹¤ë */
+/* Ã±?Ì¹??? I_N ???×»????? */
 void F_Identity(int N, double *I)
 {
   int i, j;
@@ -1014,11 +1000,10 @@ double F_LossSLPCA(double *F, int row1, int col1, double *A, int row2, int col2,
   double *Mat_sv;
   double *Mat_vv;
   int    N_sub = row1, N_var = row2, N_comp = col1;
-  //  double N_sub_double = (double) N_sub;
+  double N_sub_double = (double) N_sub;
   double sum;
   double *temp_X;
-  double term1;
-  //  double term2;
+  double term1, term2;
   double *vec_1_sub;
 
   I_var     = (double *) malloc(sizeof(double) * N_var * N_var);
@@ -1028,10 +1013,10 @@ double F_LossSLPCA(double *F, int row1, int col1, double *A, int row2, int col2,
   vec_1_sub = (double *) malloc(sizeof(double) * N_sub);
 
 
-  /* Ã±°Ì¹ÔÎóI_var¤òµá¤á¤Æ¤ª¤¯ */
+  /* Ã±?Ì¹???I_var???????Æ¤??? */
   F_Identity2(N_var, I_var);
 
-  // vec.1.sub ¤òµá¤á¤Æ¤ª¤¯
+  // vec.1.sub ???????Æ¤???
   for (i = 0; i < N_sub; i++)
 	vec_1_sub[i] = 1.0;
 
@@ -1040,12 +1025,12 @@ double F_LossSLPCA(double *F, int row1, int col1, double *A, int row2, int col2,
 
   for (i = 0; i < (N_sub * N_var); i++)
 	Mat_sv[i] = 0.0;
-  F77_CALL(dger)(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, mu, &blas_one_int, Mat_sv, &N_sub); // vec.1.sub %*% t(mu)
-  F77_CALL(dgemm)("N", "T", &N_sub, &N_var, &N_comp, &blas_minus_one, F, &N_sub, A, &N_var, &blas_one, temp_X, &N_sub FCONE FCONE); // X - F %*% t(A)
-  F77_CALL(dgemm)("N", "N", &N_sub, &N_var, &N_var, &blas_one, temp_X, &N_sub, I_var, &N_var, &blas_minus_one, Mat_sv, &N_sub FCONE FCONE); // temp <- X - F %*% t(A) - vec.1.sub %*% t(mu)
+  dger_(&N_sub, &N_var, &blas_one, vec_1_sub, &blas_one_int, mu, &blas_one_int, Mat_sv, &N_sub); // vec.1.sub %*% t(mu)
+  dgemm_("N", "T", &N_sub, &N_var, &N_comp, &blas_minus_one, F, &N_sub, A, &N_var, &blas_one, temp_X, &N_sub); // X - F %*% t(A)
+  dgemm_("N", "N", &N_sub, &N_var, &N_var, &blas_one, temp_X, &N_sub, I_var, &N_var, &blas_minus_one, Mat_sv, &N_sub); // temp <- X - F %*% t(A) - vec.1.sub %*% t(mu)
 
-  /* Âè1¹à¤Î·×»» */
-  F77_CALL(dgemm)("T", "N", &N_var, &N_var, &N_sub, &blas_one, Mat_sv, &N_sub, Mat_sv, &N_sub, &blas_zero, Mat_vv, &N_var FCONE FCONE); // t(temp) %*% temp
+  /* ??1???Î·×»? */
+  dgemm_("T", "N", &N_var, &N_var, &N_sub, &blas_one, Mat_sv, &N_sub, Mat_sv, &N_sub, &blas_zero, Mat_vv, &N_var); // t(temp) %*% temp
   sum = 0;
   for (i = 0; i < N_var; i++) {
 	for (j = 0; j < N_var; j++) {
@@ -1068,7 +1053,7 @@ double F_LossSLPCA(double *F, int row1, int col1, double *A, int row2, int col2,
 }
 
 
-/* Ã±°Ì¹ÔÎó I_N ¤ò·×»»¤¹¤ë */
+/* Ã±?Ì¹??? I_N ???×»????? */
 void F_Identity2(int N, double *I)
 {
   int i, j;

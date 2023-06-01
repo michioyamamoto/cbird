@@ -18,7 +18,7 @@ oblique=FALSE, mc.cores=1)
 		Binary data matrix (N * D).
 	}
   \item{A}{
-		Loaging matrix (D * L) estimated by \code{cbird}.
+		Loading matrix (D * L) estimated by \code{cbird}.
 	}
   \item{mu}{
 		A D-length mean vector estimated by \code{cbird}.
@@ -27,7 +27,7 @@ oblique=FALSE, mc.cores=1)
 		The number of maximum of iterations for the EM algorithm.
 	}
   \item{N.random}{
-		The number of random sets of parmeters for initial random starts.
+		The number of random sets of parameters for initial random starts.
 	}
   \item{show.random.ite}{
 		If \code{"TRUE"}, the number of each iteration is shown on the R console.

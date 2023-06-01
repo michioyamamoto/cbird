@@ -1,0 +1,16 @@
+{
+    "args": [
+        "-IC:/PROGRA~1/R/R-43~1.0/include",
+        "-DNDEBUG",
+        "-DEIGEN_DONT_VECTORIZE",
+        "-nostdinc",
+        "-include",
+        "C:/Users/michi/Documents/RStudio/cbird/cbird/.Rproj.user/CD73ED51/compilation-database/mingw64/c-definitions.h"
+    ],
+    "pch": "",
+    "is_cpp": false,
+    "hash": "14888753191332223294",
+    "compiler": "4947574074073276986",
+    "rversion": "4.3.0",
+    "dbversion": 4
+}
